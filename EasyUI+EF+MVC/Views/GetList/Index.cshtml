@@ -1,0 +1,223 @@
+﻿
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>大三结业考MVC+EasyUI+EF实现增删改查</title>
+    <style type="text/css">
+        .xs {
+            margin-left: 18%;
+            margin-top: 5px;
+        }
+    </style>
+    @* 配置环境 *@
+    <link href="~/Scripts/jquery-easyui-1.8.1/themes/default/easyui.css" rel="stylesheet" />
+    <link href="~/Scripts/jquery-easyui-1.8.1/themes/icon.css" rel="stylesheet" />
+    <script src="~/Scripts/jquery-3.4.1.min.js"></script>
+    <script src="~/Scripts/jquery-easyui-1.8.1/jquery.easyui.min.js"></script>
+    <script src="~/Scripts/jquery-easyui-1.8.1/locale/easyui-lang-zh_CN.js"></script>
+    <script type="text/javascript">
+        //实现1min定时刷新
+        function myrefresh() {
+            window.location.reload();
+        };
+        setTimeout("myrefresh()", 60000);
+        //展示数据
+        $(function () {
+            $('#dg').datagrid({
+                url: '/GetList/GetList',
+                fitColumns: true,
+                loadMsg: "数据加载中，请稍后...",
+                pagination: true,
+                //只允许选择一行
+                //singleSelect: true,
+                //显示一个行号列
+                rownumbers: true,
+                //将标签栏加入
+                toolbar: $("#tbar"),
+                resizeEdge: "1",
+                pageNumber: 1,      //当前页数--page
+                pageSize: 20,            //页面大小--page
+                columns: [[
+                    //实现全选按钮
+                    { field: 'test', title: 'ID', width: 100, align: 'center',checkbox: true },
+                    { field: 'emp_id', title: '数据库_ID', width: 100, align: 'center' },
+                    { field: 'emp_name', title: '员工_姓名', width: 100, align: 'center' },
+                    { field: 'emp_sex', title: '员工_性别', width: 100, align: 'center' },
+                    { field: 'emp_age', title: '员工_年龄', width: 100, align: 'center' },
+                    { field: 'emp_birthday', title: '员工_生日', width: 100, align: 'center' },
+                    { field: 'dept_name', title: '员工_部门名称 ', width: 100, align: 'center' }
+                ]]
+            });
+            //------查询功能
+            $("#a_search").click(function () {
+                $('#dg').datagrid('load', {
+                    //传递page、page、name三个参数
+                    name: $("#txt_name").val(),
+                    //获取下拉列表的值
+                    deptId: $("#xl_box").combobox("getValue"),
+                });
+            });
+            //下拉列表框赋值
+            $("#xl_box").combobox({
+                url: '/GetList/GetDept',
+                //实际值
+                valueField: 'dept_id',
+                //显示值
+                textField: 'dept_name'
+            });
+            //------定义变量，标识操作的状态为新增或者修改
+            var istype = false;
+            //------新增功能
+            //弹出新增
+            $("#a_add").click(function () {
+                //标识
+                istype = false;
+                $('#dialog').dialog("open");
+            });
+            //dialog布局
+            $('#dialog').dialog({
+                    title: '新增员工信息',
+                    width: 400,
+                    height: 260,
+                    modal: true,
+                    //默认关闭
+                    closed: true,
+                    buttons: [{
+                        text: '保存',
+                        handler: function () {
+                            var create_url = "/GetList/CreateEmp";
+                            $.ajax({
+                                url: create_url,
+                                dataType: "json",
+                                data: $("#myform").serialize(),
+                                type: "post",
+                                success: function (rs) {
+                                    if (rs.msg == "新增成功...") {
+                                        $("#dialog").dialog("close");
+                                        $('#dg').datagrid('load');
+                                    };
+                                },
+                            });
+                        },
+                    }, {
+                        text: '关闭',
+                        handler: function () {
+                            $("#dialog").dialog("close");
+                        },
+                    }],
+            });
+            //给新增中的dept_id输入框赋值
+            $("#dept_id").combobox({
+                url: '/GetList/GetDept',
+                valueField: 'dept_id',
+                textField: 'dept_name'
+            });
+            //------修改功能
+            $("#a_edit").click(function () {
+                //标识
+                istype = true;
+                var row = $('#dg').datagrid("getSelected");
+                if (row == null || row == "null") {
+                    $.messager.alert("来自系统的提示", "请选择您要修改的行...");
+                    return false;
+                };
+                var id = row.emp_id;
+                var datas = {};
+                datas.id = id;
+                $.ajax({
+                    url: "/GetList/GetEmp",
+                    //更改路由规则
+                    //url:"@Url.Action("/GetList/GetEmp")",
+                    dataType: "json",
+                    data: $.param(datas),
+                    success: function (rs) {
+                        //打开弹出框
+                        $('#dialog').dialog("open");
+                        //无法赋值
+                        //$("#txt_EmpName").val(rs.emp_name);
+                        //正确赋值
+                        $("#txt_EmpName").textbox("setText", rs.emp_name);
+                        $("#txt_EmpSex").textbox("setText", rs.emp_sex);
+                        $("#txt_EmpAge").textbox("setText", rs.emp_age);
+                        $("#txt_EmpBirthday").textbox("setText", rs.emp_birthday);
+                        $("#dept_id").textbox("setText", "请选择");
+                    },
+                });
+            });
+            //删除功能
+            $("#a_remove").click(function () {
+                var rows = $('#dg').datagrid("getSelections");
+                if (rows.length == 0) {
+                $.messager.alert("来自系统的提示", "请选择您要删除的行...");
+                return false;
+                };
+                $.messager.confirm("来自系统的提示", "确认删除吗？", function (rs) {
+                    if (rs) {
+                        var id = "";
+                        $.each(rows, function (i) {
+                        if (i == 0) {
+                                id = "IdList=" + this.emp_id;
+                        }
+                        else {
+                                id += "&IdList=" + this.emp_id;
+                            }
+                        });
+                        $.ajax({
+                        url: "/GetList/DeleteEmp",
+                        //data: $.param(id),
+                        data: id,
+                        dataType: "json",
+                            success: function (rs) {
+                                $.messager.alert("提示", rs.msg, "info", function () {
+                                    if (rs.status == "success")
+                                    {
+                                        $('#dg').datagrid('load');
+                                    };
+                                });
+                            },
+                        });
+                    };
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="tbar">
+        员工姓名：<input class="easyui-textbox" id="txt_name" />
+        所属部门： <input id="xl_box">
+        <a id="a_search" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-search'">点击查询</a>
+        <a id="a_add" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-add'">点击新增</a>
+        <a id="a_edit" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-edit'">点击修改</a>
+        <a id="a_remove" href="#" class="easyui-linkbutton" data-options="iconCls:'icon-remove'">点击删除</a>
+    </div>
+    <table id="dg"></table>
+    @* 新增弹框，使用dialog实现 *@
+    <div id="dialog" style="display:none;">
+        <form id="myform">
+            @*name属性必须和数据库保持一致*@
+            <div class="xs">
+                员工姓名：<input class="easyui-textbox" name="EmpName" id="txt_EmpName" />
+            </div>
+            <div class="xs">
+                员工性别：<input class="easyui-textbox" name="EmpSex" id="txt_EmpSex" />
+            </div>
+            <div class="xs">
+                员工年龄：<input class="easyui-textbox" name="EmpAge" id="txt_EmpAge" />
+            </div>
+            <div class="xs">
+                员工生日：<input class="easyui-textbox" name="EmpBirthday" id="txt_EmpBirthday" />
+            </div>
+            <div class="xs">
+                部门名称：<input class="easyui-textbox" id="dept_id" name="DeptId" />
+            </div>
+        </form>
+    </div>
+</body>
+</html>
