@@ -50,7 +50,7 @@ namespace EasyUI_EF_MVC.Controllers
                 var obj = new
                 {
                     //EF分页
-                    tatal = lst.Count(),
+                    total = lst.Count(),
                     rows = lst.Skip((page - 1) * rows).Take(rows).ToList()
                 };
                 //return Json(lst, JsonRequestBehavior.AllowGet);
